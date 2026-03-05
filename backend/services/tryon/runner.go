@@ -5,22 +5,27 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/google/uuid"
 	"backend/cli"
 )
 
+type Config struct {
+	PythonPath string
+	ScriptPath string
+	WeightsDir string
+}
+
 type TryOnJob struct {
 	ID        string
 	JobDir    string
 	OutputDir string
+	Config    Config
 }
 
-// NewJob creates a new job folder under baseDir
-func NewJob(baseDir string) (*TryOnJob, error) {
+func NewJob(baseDir string, cfg Config) (*TryOnJob, error) {
 	id := uuid.New().String()
-	jobDir := filepath.Join(baseDir, id)
+	jobDir, _ := filepath.Abs(filepath.Join(baseDir, id)) // Use Absolute paths
 	outputDir := filepath.Join(jobDir, "output")
 
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -31,26 +36,22 @@ func NewJob(baseDir string) (*TryOnJob, error) {
 		ID:        id,
 		JobDir:    jobDir,
 		OutputDir: outputDir,
+		Config:    cfg,
 	}, nil
 }
 
-// Run executes the Python CLI for this job
-func (job *TryOnJob) Run(
-	pythonPath, scriptPath, weightsDir, personImage, garmentImage, category, garmentPhotoType string,
-	numTimesteps int,
-) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-
+func (job *TryOnJob) Run(ctx context.Context, personImg, garmentImg, category, photoType string, timesteps int) ([]byte, error) {
+	// The Python script is strict: category must be 'tops', 'bottoms', or 'one-pieces'
 	args := []string{
-		"--weights-dir", weightsDir,
-		"--person-image", personImage,
-		"--garment-image", garmentImage,
+		"--weights-dir", job.Config.WeightsDir,
+		"--person-image", personImg,
+		"--garment-image", garmentImg,
 		"--category", category,
-		"--garment-photo-type", garmentPhotoType,
+		"--garment-photo-type", photoType,
 		"--output-dir", job.OutputDir,
-		"--num-timesteps", fmt.Sprint(numTimesteps),
+		"--num-timesteps", fmt.Sprint(timesteps),
+		"--num-samples", "1",
 	}
 
-	return cli.RunPythonCLI(ctx, pythonPath, scriptPath, args...)
+	return cli.RunPythonCLI(ctx, job.Config.PythonPath, job.Config.ScriptPath, args...)
 }

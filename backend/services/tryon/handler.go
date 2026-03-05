@@ -1,13 +1,13 @@
 package tryon
 
 import (
-	"fmt"
+	"context"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"backend/utils"
@@ -15,81 +15,51 @@ import (
 
 // Handler handles the /api/tryon POST request
 func Handler(c echo.Context) error {
-	// Get uploaded files
+	root, _ := os.Getwd()
+	projectRoot := filepath.Dir(root)
+
+	cfg := Config{
+		PythonPath: filepath.Join(projectRoot, ".venv", "bin", "python"),
+		ScriptPath: filepath.Join(projectRoot, "examples", "basic_inference.py"),
+		WeightsDir: os.Getenv("WEIGHT_DIR"),
+	}
+
+	// 2. Validate Inputs
 	personFile, err := c.FormFile("person_image")
-	if err != nil {
-		return utils.JSONError(c, http.StatusBadRequest, "person_image is required", "")
-	}
+	if err != nil { return utils.JSONError(c, http.StatusBadRequest, "Missing person_image", err.Error()) }
+
 	garmentFile, err := c.FormFile("garment_image")
+	if err != nil { return utils.JSONError(c, http.StatusBadRequest, "Missing garment_image", err.Error()) }
+
+	category := c.FormValue("category") // Must be 'tops', 'bottoms', or 'one-pieces'
+
+	// 3. Initialize Job
+	job, err := NewJob("jobs", cfg)
 	if err != nil {
-		return utils.JSONError(c, http.StatusBadRequest, "garment_image is required", "")
+		return utils.JSONError(c, http.StatusInternalServerError, "Job creation failed", err.Error())
 	}
 
-	category := c.FormValue("category")
-	if category == "" {
-		return utils.JSONError(c, http.StatusBadRequest, "category is required", "")
-	}
-
-	// Optional garment photo type
-	garmentPhotoType := c.FormValue("garment_photo_type")
-	if garmentPhotoType == "" {
-		garmentPhotoType = "model"
-	}
-
-	// Create a new job folder
-	job, err := NewJob("jobs")
-	if err != nil {
-		return utils.JSONError(c, http.StatusInternalServerError, "failed to create job directory", err.Error())
-	}
-
-	// Save uploaded files
+	// 4. Save files with Absolute Paths
 	personPath := filepath.Join(job.JobDir, "person.jpeg")
 	garmentPath := filepath.Join(job.JobDir, "garment.jpeg")
 
-	if err := saveUploadedFile(personFile, personPath); err != nil {
-		return utils.JSONError(c, http.StatusInternalServerError, "failed to save person image", err.Error())
-	}
-	if err := saveUploadedFile(garmentFile, garmentPath); err != nil {
-		return utils.JSONError(c, http.StatusInternalServerError, "failed to save garment image", err.Error())
-	}
+	if err := saveUploadedFile(personFile, personPath); err != nil { /* handle error */ }
+	if err := saveUploadedFile(garmentFile, garmentPath); err != nil { /* handle error */ }
 
-	// Load environment variables
-	weightsDir := os.Getenv("WEIGHT_DIR")
-	if weightsDir == "" {
-		weightsDir = "./weights"
-	}
+	// 5. Execute with longer timeout (ML takes time)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-	numTimesteps := 30
-	if v := os.Getenv("NUM_TIMESTEP"); v != "" {
-		if t, err := strconv.Atoi(v); err == nil {
-			numTimesteps = t
-		}
-	}
-
-	pythonPath := filepath.Join(".", ".venv", "bin", "python")
-	scriptPath := filepath.Join(".", "examples", "basic_inference.py")
-
-	// Run the Python CLI using the job runner
-	output, err := job.Run(
-		pythonPath,
-		scriptPath,
-		weightsDir,
-		personPath,
-		garmentPath,
-		category,
-		garmentPhotoType,
-		numTimesteps,
-	)
+	output, err := job.Run(ctx, personPath, garmentPath, category, "model", 30)
 	if err != nil {
-		fmt.Println("CLI Output: ", string(output))
-		return utils.JSONError(c, http.StatusInternalServerError, "Try-on CLI failed", string(output))
+		// IMPORTANT: Capture 'output' here because it contains the Python Traceback
+		return utils.JSONError(c, http.StatusInternalServerError, "CLI Execution Error", string(output))
 	}
 
-	// Return standardized JSON success response
 	return utils.JSONSuccess(c, map[string]string{
 		"job_id":     job.ID,
-		"output_dir": job.OutputDir,
-	}, "Try-on job completed")
+		"result_dir": job.OutputDir,
+	}, "Processing complete")
 }
 
 // saveUploadedFile saves an uploaded *multipart.FileHeader to a destination path
