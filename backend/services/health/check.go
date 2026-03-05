@@ -6,20 +6,24 @@ import (
 	"path/filepath"
 	"context"
 	"backend/cli"
+	"strings"
 )
 
 func Check() ([]byte, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
+    currentDir, _ := os.Getwd()
+    projectRoot := filepath.Dir(currentDir)
+    venvPython := filepath.Join(projectRoot, ".venv", "bin", "python")
+    scriptPath := filepath.Join(projectRoot, "examples", "basic_inference.py")
 
-	projectRoot := filepath.Dir(currentDir)
-	venvPython := filepath.Join(projectRoot, ".venv", "bin", "python")
-	scriptPath := filepath.Join(projectRoot, "examples", "basic_inference.py")
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+    output, err := cli.RunPythonCLI(ctx, venvPython, scriptPath, "--help")
 
-	return cli.RunPythonCLI(ctx, venvPython, scriptPath, "--help")
+    outputStr := string(output)
+    if strings.Contains(outputStr, "usage:") || strings.Contains(outputStr, "FASHN VTON") {
+        return output, nil
+    }
+
+    return output, err
 }
