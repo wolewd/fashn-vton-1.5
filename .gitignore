@@ -91,6 +91,7 @@ results/
 debug_outputs/
 test_outputs/
 test_outputs_*/
+jobs/
 
 # uv
 uv.lock
