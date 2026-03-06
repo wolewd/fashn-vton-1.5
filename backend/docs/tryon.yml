@@ -1,0 +1,37 @@
+info:
+  name: tryon
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/api/tryon"
+  headers:
+    - name: X-App-ID
+      value: "{{app_id}}"
+    - name: Authorization
+      value: Bearer {{jwt_token}}
+  body:
+    type: multipart-form
+    data:
+      - name: person_image
+        type: file
+        value:
+          - /home/wol/Downloads/gung3.jpeg
+      - name: garment_image
+        type: file
+        value:
+          - /home/wol/Downloads/b1abcb191bc1539a5c73bf6a8faff232.jpeg
+      - name: category
+        type: text
+        value: tops
+      - name: garment_photo_type
+        type: text
+        value: model
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

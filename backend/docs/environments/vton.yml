@@ -1,0 +1,8 @@
+name: vton
+variables:
+  - name: base_url
+    value: http://localhost:8082
+  - name: app_id
+    value: "696969696969"
+  - name: jwt_token
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzI3Nzc0MzgsInN1YiI6InZ0b24tYXBwIn0.htXUsWszhYnHYxQn_Z4wBT8meIUk2AUmO_6r9T-BXQY

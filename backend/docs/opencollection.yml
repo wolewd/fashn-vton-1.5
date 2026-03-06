@@ -1,0 +1,39 @@
+opencollection: 1.0.0
+
+info:
+  name: VTON Documentation
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+docs:
+  content: |-
+    Make sure you are inside the backend folder:
+    ```
+    cd backend
+    ```
+
+    Running the backend:
+    ```
+    go run main.go
+    ```
+
+    Generate APP_ID and JWT_Token:
+    ```
+    go run scripts/gen_token.go
+    ```
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

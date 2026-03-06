@@ -10,8 +10,13 @@ func RunPythonCLI(ctx context.Context, pythonPath string, scriptPath string, arg
 	cmdArgs := append([]string{scriptPath}, args...)
 	cmd := exec.CommandContext(ctx, pythonPath, cmdArgs...)
 
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	cmd.Cancel = func() error {
-		return cmd.Process.Signal(syscall.SIGKILL)
+		if cmd.Process != nil {
+			return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+		return nil
 	}
 
 	return cmd.CombinedOutput()
