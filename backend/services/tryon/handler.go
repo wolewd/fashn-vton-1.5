@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -15,37 +16,47 @@ import (
 )
 
 func Handler(c echo.Context) error {
-	// 1. Resolve Paths
 	root, _ := os.Getwd()
-	projectRoot := filepath.Dir(root)
 
-	weightsDir := os.Getenv("WEIGHT_DIR")
-	if weightsDir == "" || weightsDir == "./weights" {
-		weightsDir = filepath.Join(projectRoot, "weights")
+	_, weightsDir := getServicePaths()
+
+	timesteps, _ := strconv.Atoi(os.Getenv("NUM_TIMESTEP"))
+	if timesteps <= 0 {
+		timesteps = 30
+	}
+
+	// 1. Resolve CLI Paths: Use .env values (Absolute or Relative)
+	// This will pick up your "../" locally and "/root/..." in Docker
+	pythonPath := os.Getenv("PYTHON_PATH")
+	if pythonPath == "" {
+		// Only fallback to a local path if the .env variable is missing
+		pythonPath = filepath.Join(root, ".venv", "bin", "python")
+	}
+
+	scriptPath := os.Getenv("SCRIPT_PATH")
+	if scriptPath == "" {
+		scriptPath = filepath.Join(root, "examples", "basic_inference.py")
 	}
 
 	cfg := Config{
-		PythonPath: filepath.Join(projectRoot, ".venv", "bin", "python"),
-		ScriptPath: filepath.Join(projectRoot, "examples", "basic_inference.py"),
+		PythonPath: pythonPath,
+		ScriptPath: scriptPath,
 		WeightsDir: weightsDir,
 	}
 
-	// 2. Initialize Job First (So we have a UUID for every response)
-	jobsBaseDir := filepath.Join(projectRoot, "jobs")
-	job, err := NewJob(jobsBaseDir, cfg)
+	// 2. Initialize Job
+	job, err := NewJob(cfg)
 	if err != nil {
-		// No Job ID yet if this fails
 		return utils.JSONError(c, http.StatusInternalServerError, "Job creation failed", err.Error())
 	}
 
-	// Helper to attach job_id to all errors from here on
 	errWithID := func(code int, msg string, detail any) error {
 		return c.JSON(code, map[string]any{
 			"status":  "error",
 			"code":    code,
 			"message": msg,
 			"error":   detail,
-			"job_id":  job.ID, // Always return the ID
+			"job_id":  job.ID,
 		})
 	}
 
@@ -77,18 +88,19 @@ func Handler(c echo.Context) error {
 		return errWithID(http.StatusInternalServerError, "Failed to save garment image", err.Error())
 	}
 
-	// 5. Execute with Context Inheritance
-	// We wrap the Request Context. If the user cancels the CURL, ctx is canceled.
+	// 5. Execute with detailed error capture
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 5*time.Minute)
 	defer cancel()
 
-	output, err := job.Run(ctx, personPath, garmentPath, category, photoType, 30)
+	output, err := job.Run(ctx, personPath, garmentPath, category, photoType, timesteps)
 	if err != nil {
-		// Return Python error output + the job_id
-		return errWithID(http.StatusInternalServerError, "CLI Execution Error", string(output))
+		errorMessage := string(output)
+		if errorMessage == "" {
+			errorMessage = err.Error()
+		}
+		return errWithID(http.StatusInternalServerError, "CLI Execution Error", errorMessage)
 	}
 
-	// 6. Final Success
 	return utils.JSONSuccess(c, map[string]string{
 		"job_id":     job.ID,
 		"result_dir": job.OutputDir,

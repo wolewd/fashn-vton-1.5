@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+
 	"backend/utils"
 )
 
@@ -18,8 +19,23 @@ type JobInfo struct {
 
 func ListHandler(c echo.Context) error {
 	root, _ := os.Getwd()
-	projectRoot := filepath.Dir(root)
-	jobsBaseDir := filepath.Join(projectRoot, "jobs")
+
+	jobsBaseDir := os.Getenv("JOB_DIR")
+	if jobsBaseDir == "" {
+		jobsBaseDir = filepath.Join(root, "jobs")
+	}
+
+	if _, err := os.Stat(jobsBaseDir); os.IsNotExist(err) {
+		return utils.JSONSuccess(c, map[string]interface{}{
+			"jobs": []JobInfo{},
+			"meta": map[string]interface{}{
+				"limit":       10,
+				"page":        1,
+				"total":       0,
+				"total_pages": 0,
+			},
+		}, "No jobs found")
+	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 { page = 1 }

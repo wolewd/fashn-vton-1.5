@@ -16,8 +16,11 @@ import (
 
 func DownloadHandler(c echo.Context) error {
 	root, _ := os.Getwd()
-	projectRoot := filepath.Dir(root)
-	jobsBaseDir := filepath.Join(projectRoot, "jobs")
+
+	jobsBaseDir := os.Getenv("JOB_DIR")
+	if jobsBaseDir == "" {
+		jobsBaseDir = filepath.Join(root, "jobs")
+	}
 
 	uuid := c.Param("uuid")
 	targetPath := jobsBaseDir
@@ -26,11 +29,11 @@ func DownloadHandler(c echo.Context) error {
 	if uuid != "" {
 		targetPath = filepath.Join(jobsBaseDir, uuid)
 		filename = fmt.Sprintf("job_%s.tar", uuid)
+	}
 
-		// Check if folder exists
-		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-			return utils.JSONError(c, http.StatusNotFound, "Job folder not found", uuid)
-		}
+	entries, err := os.ReadDir(targetPath)
+	if err != nil || len(entries) == 0 {
+		return utils.JSONError(c, http.StatusNotFound, "Nothing to download", "Target path is empty or does not exist")
 	}
 
 	c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", filename))
@@ -40,7 +43,7 @@ func DownloadHandler(c echo.Context) error {
 	tw := tar.NewWriter(c.Response().Writer)
 	defer tw.Close()
 
-	err := filepath.Walk(targetPath, func(file string, fi os.FileInfo, err error) error {
+	err = filepath.Walk(targetPath, func(file string, fi os.FileInfo, err error) error {
 		if err != nil { return err }
 		if fi.IsDir() { return nil }
 
@@ -59,9 +62,5 @@ func DownloadHandler(c echo.Context) error {
 		return err
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

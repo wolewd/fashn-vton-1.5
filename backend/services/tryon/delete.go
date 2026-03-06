@@ -13,8 +13,11 @@ import (
 
 func DeleteHandler(c echo.Context) error {
 	root, _ := os.Getwd()
-	projectRoot := filepath.Dir(root)
-	jobsBaseDir := filepath.Join(projectRoot, "jobs")
+
+	jobsBaseDir := os.Getenv("JOB_DIR")
+	if jobsBaseDir == "" {
+		jobsBaseDir = filepath.Join(root, "jobs")
+	}
 
 	uuid := c.Param("uuid")
 
@@ -32,14 +35,14 @@ func DeleteHandler(c echo.Context) error {
 		return utils.JSONSuccess(c, nil, fmt.Sprintf("Job %s deleted successfully", uuid))
 	}
 
-	files, err := os.ReadDir(jobsBaseDir)
+	entries, err := os.ReadDir(jobsBaseDir)
 	if err != nil {
-		return utils.JSONError(c, http.StatusInternalServerError, "Failed to read jobs directory", err.Error())
+		return utils.JSONSuccess(c, map[string]int{"deleted_count": 0}, "Jobs directory is already empty or missing")
 	}
 
 	count := 0
-	for _, f := range files {
-		err := os.RemoveAll(filepath.Join(jobsBaseDir, f.Name()))
+	for _, entry := range entries {
+		err := os.RemoveAll(filepath.Join(jobsBaseDir, entry.Name()))
 		if err == nil {
 			count++
 		}
