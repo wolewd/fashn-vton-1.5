@@ -1,7 +1,7 @@
 name: vton
 variables:
   - name: base_url
-    value: http://localhost:8082
+    value: http://localhost:8080
   - name: app_id
     value: "696969696969"
   - name: jwt_token

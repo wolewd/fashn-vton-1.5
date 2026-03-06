@@ -16,6 +16,8 @@ config:
 
 docs:
   content: |-
+    ## Running the backend 
+
     Make sure you are inside the backend folder:
     ```
     cd backend
@@ -30,6 +32,22 @@ docs:
     ```
     go run scripts/gen_token.go
     ```
+
+    ## Running the web server
+
+    dont forget to setup your cloudflare tunnel first.
+
+    turn on docker from root folder:
+    ```
+    docker compose up -d
+    ```
+
+    check ip:
+    ```
+    docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' nginx-proxy-manager
+    ```
+
+    setup your nginx-proxy-manager
   type: text/markdown
 bundled: false
 extensions:

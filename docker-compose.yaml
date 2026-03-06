@@ -10,7 +10,29 @@ services:
     env_file:
       - .env
     volumes:
-      - ./npm/data:/data
-      - ./npm/letsencrypt:/etc/letsencrypt
+      - nginx_data:/data
+      - nginx_letsencrypt:/etc/letsencrypt
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - backend_vton
+
+  tunnel:
+    container_name: cloudflared-tunnel
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --protocol http2 --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    env_file:
+      - .env
+    networks:
+      - backend_vton
+    depends_on:
+      - app
+
+volumes:
+  nginx_data:
+  nginx_letsencrypt:
+
+networks:
+  backend_vton:
+    driver: bridge

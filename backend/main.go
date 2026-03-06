@@ -23,10 +23,17 @@ func main() {
 		fmt.Println("No .env file found, using system environment variables")
 	}
 
+	host := os.Getenv("SERVER_HOST")
+    if host == "" {
+        host = "0.0.0.0"
+    }
+
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
 	}
+
+	address := fmt.Sprintf("%s:%s", host, port)
 
 	e := echo.New()
 
@@ -53,7 +60,7 @@ func main() {
 	}
 
 	go func() {
-		if err := e.Start(":" + port); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := e.Start(address); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			e.Logger.Fatal("Shutting down the server due to error:", err)
 		}
 	}()
