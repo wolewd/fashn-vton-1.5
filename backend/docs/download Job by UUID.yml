@@ -1,0 +1,26 @@
+info:
+  name: download Job by UUID
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: "{{base_url}}/api/downloads/:uuid"
+  headers:
+    - name: X-App-ID
+      value: "{{app_id}}"
+    - name: Authorization
+      value: Bearer {{jwt_token}}
+  params:
+    - name: uuid
+      value: 6acb654e-d129-45d0-b372-6df12616e0d5
+      type: path
+  body:
+    type: multipart-form
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

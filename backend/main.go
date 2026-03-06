@@ -43,6 +43,13 @@ func main() {
 	{
 		api.GET("/health", health.Handler)
 		api.POST("/tryon", tryon.Handler)
+
+		api.GET("/jobs", tryon.ListHandler)
+        api.DELETE("/jobs", tryon.DeleteHandler)
+        api.DELETE("/jobs/:uuid", tryon.DeleteHandler)
+
+        api.GET("/downloads", tryon.DownloadHandler)
+        api.GET("/downloads/:uuid", tryon.DownloadHandler)
 	}
 
 	go func() {
