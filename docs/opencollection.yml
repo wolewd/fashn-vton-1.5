@@ -16,11 +16,68 @@ config:
 
 docs:
   content: |-
+    ## running the ai proccess
+    create venv
+    ```
+    python -m venv .venv
+    ```
+    activate venv (unix) from terminal
+    ```
+    source .venv/bin/activate
+    ```
+
+    or using powershell in windows
+    ```
+     .\.venv\Scripts\Activate.ps1
+    ```
+
+    install dependencies
+    ```
+    pip install -e .
+    ```
+
+    check if the proccess using cpu/cuda
+    ```
+    `python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+    ```
+
+    if you have gpu and cuda installed but it's still using cpu, remove old version of toch
+    ```
+    pip uninstall torch torchvision torchaudio
+    ```
+
+    install cuda version for torch
+    ```
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    ```
+
+
     ## Running the backend 
 
     Make sure you are inside the backend folder:
     ```
     cd backend
+    ```
+
+    dont forget to setup the backend .env inside root_project/backend
+    ```
+    # Server settings
+    SERVER_HOST=0.0.0.0
+    SERVER_PORT=8080
+
+    # Security
+    JWT_SECRET=yoursupersecretkey
+    APP_ID=yourappid
+
+    # CORS Settings (comma-separated)
+    ALLOWED_ORIGINS=http://localhost:3000,http://your-frontend-app.com
+
+    # AI settings
+    JOB_DIR=../jobs
+    WEIGHT_DIR=../weights
+    PYTHON_PATH=../.venv/bin/python
+    SCRIPT_PATH=../examples/basic_inference.py
+    NUM_TIMESTEP=30
     ```
 
     Running the backend:
@@ -35,19 +92,46 @@ docs:
 
     ## Running the web server
 
-    dont forget to setup your cloudflare tunnel first.
+    DISCLAIMER:
+    ```
+    I expect you already know how to setup cloudflared tunnel and nginx-proxy-manager via docker.
+    ```
+
+    dont forget to setup your nginx proxy manager and cloudflare tunnel .env from root project.
+    ```
+    # for nginx docker
+    INITIAL_ADMIN_EMAIL=youremail@example.com
+    INITIAL_ADMIN_PASSWORD=yoursupersecretpassword
+    CLOUDFLARE_TUNNEL_TOKEN=cloudflaredtunneltokenfromcloudflared
+    ```
 
     turn on docker from root folder:
     ```
     docker compose up -d
     ```
 
-    check ip:
+    check nginx-proxy-manager docker ip:
     ```
     docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' nginx-proxy-manager
     ```
 
-    setup your nginx-proxy-manager
+    in cloudflared put nginx-proxy-manager docker ip as a hostname for example:
+    ```
+    http://172.10.0.1:80
+    ```
+
+    in nginx create new proxy host and put this in hostname, for example:
+    ```
+    http://host.docker.internal:8080
+    ```
+
+    finally put custom nginx configuration because generating using ai can take alot of time.
+    ```
+    proxy_read_timeout 300s;
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 300s;
+    client_max_body_size 50M;
+    ```
   type: text/markdown
 bundled: false
 extensions:
