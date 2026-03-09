@@ -1,11 +1,11 @@
 info:
-  name: Delete Job by UUID
+  name: Try On Result
   type: http
-  seq: 6
+  seq: 3
 
 http:
-  method: DELETE
-  url: "{{base_url}}/api/jobs/:uuid"
+  method: GET
+  url: "{{base_url}}/api/tryon/:uuid"
   headers:
     - name: X-App-ID
       value: "{{app_id}}"
@@ -13,7 +13,7 @@ http:
       value: Bearer {{jwt_token}}
   params:
     - name: uuid
-      value: 6acb654e-d129-45d0-b372-6df12616e0d5
+      value: 9074a9c2-bd40-49b5-9891-e85932dcff8b
       type: path
   body:
     type: multipart-form

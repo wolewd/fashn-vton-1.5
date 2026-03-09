@@ -50,6 +50,7 @@ func main() {
 	{
 		api.GET("/health", health.Handler)
 		api.POST("/tryon", tryon.Handler)
+		api.GET("/tryon/:uuid", tryon.ResultHandler)
 
 		api.GET("/jobs", tryon.ListHandler)
         api.DELETE("/jobs", tryon.DeleteHandler)
